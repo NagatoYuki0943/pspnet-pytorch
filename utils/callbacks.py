@@ -104,19 +104,19 @@ class EvalCallback():
 
     def get_miou_png(self, image):
         #---------------------------------------------------------#
-        #   åœ¨è¿™é‡Œå°†å›¾åƒè½¬æ¢æˆRGBå›¾åƒï¼Œé˜²æ­¢ç°åº¦å›¾åœ¨é¢„æµ‹æ—¶æŠ¥é”™ã€‚
-        #   ä»£ç ä»…ä»…æ”¯æŒRGBå›¾åƒçš„é¢„æµ‹ï¼Œæ‰€æœ‰å…¶å®ƒç±»å‹çš„å›¾åƒéƒ½ä¼šè½¬åŒ–æˆRGB
+        #   ÔÚÕâÀï½«Í¼Ïñ×ª»»³ÉRGBÍ¼Ïñ£¬·ÀÖ¹»Ò¶ÈÍ¼ÔÚÔ¤²âÊ±±¨´í¡£
+        #   ´úÂë½ö½öÖ§³ÖRGBÍ¼ÏñµÄÔ¤²â£¬ËùÓĞÆäËüÀàĞÍµÄÍ¼Ïñ¶¼»á×ª»¯³ÉRGB
         #---------------------------------------------------------#
         image       = cvtColor(image)
         orininal_h  = np.array(image).shape[0]
         orininal_w  = np.array(image).shape[1]
         #---------------------------------------------------------#
-        #   ç»™å›¾åƒå¢åŠ ç°æ¡ï¼Œå®ç°ä¸å¤±çœŸçš„resize
-        #   ä¹Ÿå¯ä»¥ç›´æ¥resizeè¿›è¡Œè¯†åˆ«
+        #   ¸øÍ¼ÏñÔö¼Ó»ÒÌõ£¬ÊµÏÖ²»Ê§ÕæµÄresize
+        #   Ò²¿ÉÒÔÖ±½Óresize½øĞĞÊ¶±ğ
         #---------------------------------------------------------#
         image_data, nw, nh  = resize_image(image, (self.input_shape[1],self.input_shape[0]))
         #---------------------------------------------------------#
-        #   æ·»åŠ ä¸Šbatch_sizeç»´åº¦
+        #   Ìí¼ÓÉÏbatch_sizeÎ¬¶È
         #---------------------------------------------------------#
         image_data  = np.expand_dims(np.transpose(preprocess_input(np.array(image_data, np.float32)), (2, 0, 1)), 0)
 
@@ -126,24 +126,24 @@ class EvalCallback():
                 images = images.cuda()
                 
             #---------------------------------------------------#
-            #   å›¾ç‰‡ä¼ å…¥ç½‘ç»œè¿›è¡Œé¢„æµ‹
+            #   Í¼Æ¬´«ÈëÍøÂç½øĞĞÔ¤²â
             #---------------------------------------------------#
             pr = self.net(images)[0]
             #---------------------------------------------------#
-            #   å–å‡ºæ¯ä¸€ä¸ªåƒç´ ç‚¹çš„ç§ç±»
+            #   È¡³öÃ¿Ò»¸öÏñËØµãµÄÖÖÀà
             #---------------------------------------------------#
             pr = F.softmax(pr.permute(1,2,0),dim = -1).cpu().numpy()
             #--------------------------------------#
-            #   å°†ç°æ¡éƒ¨åˆ†æˆªå–æ‰
+            #   ½«»ÒÌõ²¿·Ö½ØÈ¡µô
             #--------------------------------------#
             pr = pr[int((self.input_shape[0] - nh) // 2) : int((self.input_shape[0] - nh) // 2 + nh), \
                     int((self.input_shape[1] - nw) // 2) : int((self.input_shape[1] - nw) // 2 + nw)]
             #---------------------------------------------------#
-            #   è¿›è¡Œå›¾ç‰‡çš„resize
+            #   ½øĞĞÍ¼Æ¬µÄresize
             #---------------------------------------------------#
             pr = cv2.resize(pr, (orininal_w, orininal_h), interpolation = cv2.INTER_LINEAR)
             #---------------------------------------------------#
-            #   å–å‡ºæ¯ä¸€ä¸ªåƒç´ ç‚¹çš„ç§ç±»
+            #   È¡³öÃ¿Ò»¸öÏñËØµãµÄÖÖÀà
             #---------------------------------------------------#
             pr = pr.argmax(axis=-1)
     
@@ -162,18 +162,18 @@ class EvalCallback():
             print("Get miou.")
             for image_id in tqdm(self.image_ids):
                 #-------------------------------#
-                #   ä»æ–‡ä»¶ä¸­è¯»å–å›¾åƒ
+                #   ´ÓÎÄ¼şÖĞ¶ÁÈ¡Í¼Ïñ
                 #-------------------------------#
                 image_path  = os.path.join(self.dataset_path, "VOC2007/JPEGImages/"+image_id+".jpg")
                 image       = Image.open(image_path)
                 #------------------------------#
-                #   è·å¾—é¢„æµ‹txt
+                #   »ñµÃÔ¤²âtxt
                 #------------------------------#
                 image       = self.get_miou_png(image)
                 image.save(os.path.join(pred_dir, image_id + ".png"))
                         
             print("Calculate miou.")
-            _, IoUs, _, _ = compute_mIoU(gt_dir, pred_dir, self.image_ids, self.num_classes, None)  # æ‰§è¡Œè®¡ç®—mIoUçš„å‡½æ•°
+            _, IoUs, _, _ = compute_mIoU(gt_dir, pred_dir, self.image_ids, self.num_classes, None)  # Ö´ĞĞ¼ÆËãmIoUµÄº¯Êı
             temp_miou = np.nanmean(IoUs) * 100
 
             self.mious.append(temp_miou)

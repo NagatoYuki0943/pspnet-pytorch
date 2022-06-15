@@ -66,12 +66,12 @@ class PSPNet(object):
         for name, value in kwargs.items():
             setattr(self, name, value)
         #---------------------------------------------------#
-        #   画框设置不同的颜色
+        #   画框设置不同的颜色,画图时使用
         #---------------------------------------------------#
         if self.num_classes <= 21:
-            self.colors = [ (0, 0, 0), (128, 0, 0), (0, 128, 0), (128, 128, 0), (0, 0, 128), (128, 0, 128), (0, 128, 128), 
-                            (128, 128, 128), (64, 0, 0), (192, 0, 0), (64, 128, 0), (192, 128, 0), (64, 0, 128), (192, 0, 128), 
-                            (64, 128, 128), (192, 128, 128), (0, 64, 0), (128, 64, 0), (0, 192, 0), (128, 192, 0), (0, 64, 128), 
+            self.colors = [ (0, 0, 0), (128, 0, 0), (0, 128, 0), (128, 128, 0), (0, 0, 128), (128, 0, 128), (0, 128, 128),
+                            (128, 128, 128), (64, 0, 0), (192, 0, 0), (64, 128, 0), (192, 128, 0), (64, 0, 128), (192, 0, 128),
+                            (64, 128, 128), (192, 128, 128), (0, 64, 0), (128, 64, 0), (0, 192, 0), (128, 192, 0), (0, 64, 128),
                             (128, 64, 12)]
         else:
             hsv_tuples = [(x / self.num_classes, 1., 1.) for x in range(self.num_classes)]
@@ -92,7 +92,7 @@ class PSPNet(object):
         #   载入模型与权值
         #-------------------------------#
         self.net    = pspnet(num_classes=self.num_classes, downsample_factor=self.downsample_factor, pretrained=False, backbone=self.backbone, aux_branch=False)
-        
+
         device      = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.net.load_state_dict(torch.load(self.model_path, map_location=device), strict=False)
         self.net    = self.net.eval()
@@ -118,7 +118,7 @@ class PSPNet(object):
         orininal_h  = np.array(image).shape[0]
         orininal_w  = np.array(image).shape[1]
         #---------------------------------------------------------#
-        #   给图像增加灰条，实现不失真的resize
+        #   给图像增加灰条，实现不失真的resize,变为正方形
         #   也可以直接resize进行识别
         #---------------------------------------------------------#
         image_data, nw, nh  = resize_image(image, (self.input_shape[1],self.input_shape[0]))
@@ -131,13 +131,13 @@ class PSPNet(object):
             images = torch.from_numpy(image_data)
             if self.cuda:
                 images = images.cuda()
-                
+
             #---------------------------------------------------#
             #   图片传入网络进行预测
             #---------------------------------------------------#
             pr = self.net(images)[0]
             #---------------------------------------------------#
-            #   取出每一个像素点的种类
+            #   取出每一个像素点的种类,全为0~1之间
             #---------------------------------------------------#
             pr = F.softmax(pr.permute(1,2,0),dim = -1).cpu().numpy()
             #--------------------------------------#
@@ -150,7 +150,7 @@ class PSPNet(object):
             #---------------------------------------------------#
             pr = cv2.resize(pr, (orininal_w, orininal_h), interpolation = cv2.INTER_LINEAR)
             #---------------------------------------------------#
-            #   取出每一个像素点的种类
+            #   取出每一个像素点的种类(种类最大值)
             #---------------------------------------------------#
             pr = pr.argmax(axis=-1)
         
@@ -229,7 +229,7 @@ class PSPNet(object):
             images = torch.from_numpy(image_data)
             if self.cuda:
                 images = images.cuda()
-                
+
             #---------------------------------------------------#
             #   图片传入网络进行预测
             #---------------------------------------------------#
@@ -324,7 +324,7 @@ class PSPNet(object):
             images = torch.from_numpy(image_data)
             if self.cuda:
                 images = images.cuda()
-                
+
             #---------------------------------------------------#
             #   图片传入网络进行预测
             #---------------------------------------------------#
@@ -346,6 +346,6 @@ class PSPNet(object):
             #   取出每一个像素点的种类
             #---------------------------------------------------#
             pr = pr.argmax(axis=-1)
-    
+
         image = Image.fromarray(np.uint8(pr))
         return image

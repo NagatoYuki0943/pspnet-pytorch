@@ -1,3 +1,8 @@
+#---------------------------------------------------#
+#   MobileNet-V2: 倒残差结构
+#   1x1 3x3DWConv 1x1
+#---------------------------------------------------#
+
 import math
 
 import torch.nn as nn
@@ -5,6 +10,7 @@ from torch.hub import load_state_dict_from_url
 
 BatchNorm2d = nn.BatchNorm2d
 
+# 卷积,标准化,激活函数
 def conv_bn(inp, oup, stride):
     return nn.Sequential(
         nn.Conv2d(inp, oup, 3, stride, 1, bias=False),
@@ -12,6 +18,7 @@ def conv_bn(inp, oup, stride):
         nn.ReLU6(inplace=True)
     )
 
+# 1x1卷积,标准化,激活函数
 def conv_1x1_bn(inp, oup):
     return nn.Sequential(
         nn.Conv2d(inp, oup, 1, 1, 0, bias=False),
@@ -19,6 +26,15 @@ def conv_1x1_bn(inp, oup):
         nn.ReLU6(inplace=True)
     )
 
+#---------------------------------------------------#
+#   倒残差结构
+#   残差:   两端channel多,中间channel少
+#       降维 --> 升维
+#   倒残差: 两端channel少,中间channel多
+#       升维 --> 降维
+#   1x1 3x3DWConv 1x1
+#   最后的1x1Conv没有激活函数
+#---------------------------------------------------#
 class InvertedResidual(nn.Module):
     def __init__(self, inp, oup, stride, expand_ratio):
         super(InvertedResidual, self).__init__()
@@ -26,9 +42,10 @@ class InvertedResidual(nn.Module):
         assert stride in [1, 2]
 
         hidden_dim = round(inp * expand_ratio)
+        # 步长为1同时通道不变化才相加
         self.use_res_connect = self.stride == 1 and inp == oup
         #----------------------------------------------------#
-        #   利用1x1卷积根据输入进来的通道数进行通道数上升
+        #   利用1x1卷积根据输入进来的通道数进行通道数上升,不扩张就不需要第一个1x1卷积了
         #----------------------------------------------------#
         if expand_ratio == 1:
             self.conv = nn.Sequential(
@@ -39,10 +56,10 @@ class InvertedResidual(nn.Module):
                 BatchNorm2d(hidden_dim),
                 nn.ReLU6(inplace=True),
                 #----------------------------------------------------#
-                #   利用1x1的卷积进行通道数的下降
+                #   利用1x1的卷积进行通道数的下降,没有激活函数
                 #----------------------------------------------------#
                 nn.Conv2d(hidden_dim, oup, 1, 1, 0, bias=False),
-                BatchNorm2d(oup),
+                BatchNorm2d(oup),   # 没有激活函数
             )
         else:
             self.conv = nn.Sequential(
@@ -62,7 +79,7 @@ class InvertedResidual(nn.Module):
                 #   利用1x1的卷积进行通道数的下降
                 #----------------------------------------------------#
                 nn.Conv2d(hidden_dim, oup, 1, 1, 0, bias=False),
-                BatchNorm2d(oup),
+                BatchNorm2d(oup),   # 没有激活函数
             )
 
     def forward(self, x):
@@ -79,39 +96,40 @@ class MobileNetV2(nn.Module):
         last_channel = 1280
 
         interverted_residual_setting = [
+            # 扩张,out_channel,重复次数,stride
             # t, c, n, s
-            # 237,237,32 -> 237,237,16
-            [1, 16, 1, 1],
-            # 237,237,16 -> 119,119,24
-            [6, 24, 2, 2],
-            # 119,119,24 -> 60,60,32
-            [6, 32, 3, 2],
-            # 60,60,32 -> 30,30,64
-            [6, 64, 4, 2],
-            # 30,30,64 -> 30,30,96
-            [6, 96, 3, 1],
-            # 30,30,96 -> 15,15,160
-            [6, 160, 3, 2],
-            # 15,15,160 -> 15,15,320
-            [6, 320, 1, 1],
+            #                 高,宽,通道
+            [1, 16, 1, 1],  # 237,237,32 -> 237,237,16
+            [6, 24, 2, 2],  # 237,237,16 -> 119,119,24  开始id:2
+            [6, 32, 3, 2],  # 119,119,24 -> 60,60,32    开始id:4
+
+            # 后面两层的膨胀系数会根据downsample_factor调整, 为8这里为2
+            [6, 64, 4, 2],  # 60,60,32 -> 30,30,64          开始id:7    stride会根据downsample_factor调整, 为16这里为2, 为8这里为1
+            [6, 96, 3, 1],  # 30,30,64 -> 30,30,96  # 这个输出为aux层输出
+
+            # 后面两层的膨胀系数会根据downsample_factor调整, 为16这里为2, 为8这里为4
+            [6, 160, 3, 2], # 30,30,96 -> 15,15,160     开始id:14       stride会变为1,保持高宽为30
+            [6, 320, 1, 1], # 15,15,160 -> 15,15,320
         ]
-        
+
         assert input_size % 32 == 0
-        # 473,473,3 -> 237,237,32
         input_channel = int(input_channel * width_mult)
         self.last_channel = int(last_channel * width_mult) if width_mult > 1.0 else last_channel
+        # 第一层卷积 473,473,3 -> 237,237,32
         self.features = [conv_bn(3, input_channel, 2)]
-        
+
         # 根据上述列表进行循环，构建mobilenetv2的结构
         for t, c, n, s in interverted_residual_setting:
             output_channel = int(c * width_mult)
             for i in range(n):
+                # 第一次步长为2,其余为1
                 if i == 0:
                     self.features.append(block(input_channel, output_channel, s, expand_ratio=t))
                 else:
                     self.features.append(block(input_channel, output_channel, 1, expand_ratio=t))
                 input_channel = output_channel
-                
+
+        # PSPNet不会使用后面的分类块,只进行特征提取
         # mobilenetv2结构的收尾工作
         self.features.append(conv_1x1_bn(input_channel, self.last_channel))
         self.features = nn.Sequential(*self.features)

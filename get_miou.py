@@ -1,3 +1,9 @@
+"""
+指标评估
+在pspnet.py中修改为预测时的参数,如模型路径,种类,num_classes
+下面也要修改分类数,分类名称,数据集位置
+"""
+
 import os
 
 from PIL import Image
@@ -15,12 +21,12 @@ if __name__ == "__main__":
     #---------------------------------------------------------------------------#
     #   miou_mode用于指定该文件运行时计算的内容
     #   miou_mode为0代表整个miou计算流程，包括获得预测结果、计算miou。
-    #   miou_mode为1代表仅仅获得预测结果。
+    #   miou_mode为1代表仅仅获得预测结果。保存在 miou_out 中
     #   miou_mode为2代表仅仅计算miou。
     #---------------------------------------------------------------------------#
     miou_mode       = 0
     #------------------------------#
-    #   分类个数+1、如2+1
+    #   分类个数+1、如2+1 猫狗=2+1
     #------------------------------#
     num_classes     = 21
     #--------------------------------------------#
@@ -34,7 +40,8 @@ if __name__ == "__main__":
     #-------------------------------------------------------#
     VOCdevkit_path  = 'VOCdevkit'
 
-    image_ids       = open(os.path.join(VOCdevkit_path, "VOC2007/ImageSets/Segmentation/val.txt"),'r').read().splitlines() 
+    # 使用验证集进行miou验证
+    image_ids       = open(os.path.join(VOCdevkit_path, "VOC2007/ImageSets/Segmentation/val.txt"),'r').read().splitlines()
     gt_dir          = os.path.join(VOCdevkit_path, "VOC2007/SegmentationClass/")
     miou_out_path   = "miou_out"
     pred_dir        = os.path.join(miou_out_path, 'detection-results')
@@ -42,7 +49,7 @@ if __name__ == "__main__":
     if miou_mode == 0 or miou_mode == 1:
         if not os.path.exists(pred_dir):
             os.makedirs(pred_dir)
-            
+
         print("Load model.")
         pspnet = PSPNet()
         print("Load model done.")

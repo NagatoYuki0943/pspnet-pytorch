@@ -8,6 +8,7 @@ model_urls = {
     'resnet50': 'https://github.com/bubbliiiing/pspnet-pytorch/releases/download/v1.0/resnet50s-a75c83cf.pth',
 }
 
+
 def conv3x3(in_planes, out_planes, stride=1):
     "3x3 convolution with padding"
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
@@ -20,15 +21,15 @@ class Bottleneck(nn.Module):
         super(Bottleneck, self).__init__()
         self.conv1  = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False)
         self.bn1    = norm_layer(planes)
-        
+
         self.conv2  = nn.Conv2d(planes, planes, kernel_size=3, stride=stride, padding=dilation, dilation=dilation, bias=False)
         self.bn2    = norm_layer(planes)
-        
+
         self.conv3  = nn.Conv2d(planes, planes * 4, kernel_size=1, bias=False)
         self.bn3    = norm_layer(planes * 4)
-        
+
         self.relu   = nn.ReLU(inplace=True)
-        
+
         self.downsample = downsample
         self.dilation   = dilation
         self.stride     = stride
@@ -52,8 +53,8 @@ class Bottleneck(nn.Module):
 
         out += residual
         out = self.relu(out)
-        return out
 
+        return out
 
 class ResNet(nn.Module):
     def __init__(self, block, layers, num_classes=1000, dilated=False, deep_base=True, norm_layer=nn.BatchNorm2d):
@@ -74,9 +75,9 @@ class ResNet(nn.Module):
                                    bias=False)
         self.bn1        = norm_layer(self.inplanes)
         self.relu       = nn.ReLU(inplace=True)
-        
+
         self.maxpool    = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        
+
         self.layer1     = self._make_layer(block, 64, layers[0], norm_layer=norm_layer)
         self.layer2     = self._make_layer(block, 128, layers[1], stride=2, norm_layer=norm_layer)
         if dilated:
@@ -89,7 +90,7 @@ class ResNet(nn.Module):
                                            norm_layer=norm_layer)
             self.layer4 = self._make_layer(block, 512, layers[3], stride=2,
                                            norm_layer=norm_layer)
-            
+
         self.avgpool    = nn.AvgPool2d(7, stride=1)
         self.fc         = nn.Linear(512 * block.expansion, num_classes)
 
