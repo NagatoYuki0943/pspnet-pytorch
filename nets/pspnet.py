@@ -134,7 +134,6 @@ class MobileNetV2(nn.Module):
 
 #-----------------------------------------------------------------------------#
 #   PSPModule
-#   [30,30,320] => [30, 30, 80]
 #   获取到的特征层划分成不同大小的区域，每个区域内部各自进行平均池化。
 #   实现聚合不同区域的上下文信息，从而提高获取全局信息的能力
 #   最终将in_channels和四个特征区域的输出合并通道
@@ -143,7 +142,9 @@ class MobileNetV2(nn.Module):
 #       ┌──────────────┬──────────────┼──────────────┬──────────────┐
 #       │              │              │              │              │
 #       │          AvgPool2d      AvgPool2d      AvgPool2d      AvgPool2d
-#       │             1x1            2x2            3x3            6x6
+#       │           1x1out         2x2out         3x3out         6x6out
+#       │              │              │              │              │
+#       │           1x1Conv        1x1Conv        1x1Conv        1x1Conv
 #       │              │              │              │              │
 #       │          UpSample       UpSample       UpSample       UpSample
 #       │              │              │              │              │
